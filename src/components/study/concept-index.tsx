@@ -12,10 +12,22 @@ import { conceptCategories, concepts } from "@/data/concepts";
 import { prompts } from "@/data/prompts";
 import type { ConceptCategory } from "@/data/types";
 import { cn } from "@/lib/utils";
+import { InfluenceGraph } from "./influence-graph";
+import type { ReaderTarget } from "./reader-dialog";
 
-/** Aba "Índice Cruzado": conceitos por tema, filtráveis por busca e por prompt. */
-export function ConceptIndex() {
-  const [search, setSearch] = useState("");
+/** Aba "Índice Cruzado": grafo de influências e conceitos por tema. */
+export function ConceptIndex({
+  searchValue,
+  onSearchChange,
+  onOpenStudy,
+}: {
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+  onOpenStudy: (target: ReaderTarget) => void;
+}) {
+  const [localSearch, setLocalSearch] = useState("");
+  const search = searchValue ?? localSearch;
+  const setSearch = onSearchChange ?? setLocalSearch;
   const [category, setCategory] = useState<ConceptCategory | "ALL">("ALL");
   const [promptFilter, setPromptFilter] = useState<Set<string>>(new Set());
 
@@ -61,8 +73,10 @@ export function ConceptIndex() {
       <SectionHeading
         overline="Parte II"
         title="Índice por Tema — Onde Cada Conceito Aparece"
-        description="Cada conceito é seguido pelos números dos Prompts em que aparece com desenvolvimento substantivo, e uma nota sobre como o tratamento varia entre eles."
+        description="Explore o grafo de influência entre estudos e, abaixo, navegue pelo índice cruzado de conceitos. As relações são transcritas do documento-mestre."
       />
+
+      <InfluenceGraph onOpenStudy={onOpenStudy} />
 
       {/* Controles */}
       <div className="space-y-4">

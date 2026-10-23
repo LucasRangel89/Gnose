@@ -10,6 +10,7 @@ import { NotesDialog } from "./notes-dialog";
 import { ReaderDialog, type ReaderTarget } from "./reader-dialog";
 import { StatusControl } from "./status-control";
 import { nextPromptGroups, nextPrompts } from "@/data/nextPrompts";
+import { contentFileFor } from "@/data/content-index";
 import type { ProgressStatus } from "@/data/types";
 import { useSetProgress } from "@/hooks/use-progress";
 import { useProgressMap } from "@/hooks/use-progress";
@@ -59,6 +60,13 @@ export function NextPromptsSection() {
           toast({
             title: "Progresso atualizado",
             description: `Prompt ${id} marcado como ${label}.`,
+          });
+        },
+        onError: () => {
+          toast({
+            title: "Não foi possível salvar o progresso",
+            description: "Verifique a configuração do banco e tente novamente.",
+            variant: "destructive",
           });
         },
       },
@@ -114,6 +122,11 @@ export function NextPromptsSection() {
                           <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                             Pré-req: {prompt.prereq}
                             {prompt.meta ? ` · ${prompt.meta}` : ""}
+                          </span>
+                          <span className="mt-1 block text-[10px] text-muted-foreground/80">
+                            {contentFileFor("NEXT_PROMPT", prompt.id)
+                              ? "Texto integral disponível"
+                              : "Roteiro disponível · texto integral em preparação"}
                           </span>
                         </span>
                         <ChevronDown

@@ -16,8 +16,16 @@ function firstLetter(term: string): string {
 }
 
 /** Aba "Glossário": busca + navegação por letra inicial. */
-export function GlossarySection() {
-  const [search, setSearch] = useState("");
+export function GlossarySection({
+  searchValue,
+  onSearchChange,
+}: {
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+} = {}) {
+  const [localSearch, setLocalSearch] = useState("");
+  const search = searchValue ?? localSearch;
+  const setSearch = onSearchChange ?? setLocalSearch;
   const [letter, setLetter] = useState<string>("ALL");
 
   const letters = useMemo(() => {
