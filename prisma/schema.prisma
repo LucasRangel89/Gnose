@@ -1,0 +1,37 @@
+// Schema do Dashboard de Estudos — Gnose & Esoterismo.
+// Duas tabelas: progresso de estudo (por item) e notas de estudo (por item).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Progresso de estudo de um item (prompt original "P1".."P10" ou expansão "5.1".."5.11").
+/// Ausência de linha = NOT_STARTED.
+model StudyProgress {
+  id        String   @id @default(cuid())
+  itemType  String // "PROMPT" | "NEXT_PROMPT"
+  itemId    String // "P5" | "5.6" ...
+  status    String   @default("NOT_STARTED") // "NOT_STARTED" | "IN_PROGRESS" | "DONE"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([itemType, itemId])
+  @@index([itemType, itemId])
+}
+
+/// Notas de estudo vinculadas a um item.
+model Note {
+  id        String   @id @default(cuid())
+  itemType  String // "PROMPT" | "NEXT_PROMPT"
+  itemId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([itemType, itemId])
+}
