@@ -16,7 +16,17 @@ export default function Home() {
             Série: Mapa de Estudos sobre Gnosticismo e Esoterismo —
             Documento-Mestre de Referência
           </p>
-          <p>Progresso e notas salvos automaticamente · Estudo autodidata</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 sm:justify-end">
+          <span>Progresso e notas salvos automaticamente · Estudo autodidata ·</span>
+          <a
+            href="/gnose-dashboard.zip"
+            download
+            className="underline decoration-primary/40 underline-offset-4 transition-colors hover:text-foreground"
+            title="Baixar o pacote completo do projeto para upload no GitHub"
+          >
+            Baixar pacote (.zip)
+          </a>
+        </p>
         </div>
       </footer>
     </div>

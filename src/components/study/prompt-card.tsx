@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { NotesDialog } from "./notes-dialog";
+import { ReaderDialog, type ReaderTarget } from "./reader-dialog";
 import { StatusControl } from "./status-control";
 import type { Prompt } from "@/data/types";
 import type { ProgressStatus } from "@/data/types";
@@ -19,6 +23,18 @@ export function PromptCard({ prompt, status, statusLoading }: PromptCardProps) {
   const setStatus = useSetProgress();
   const { toast } = useToast();
   const itemLabel = `P${prompt.number} — ${prompt.title}`;
+  const [readerOpen, setReaderOpen] = useState(false);
+  const [readerTarget, setReaderTarget] = useState<ReaderTarget | null>(null);
+
+  function openReader() {
+    setReaderTarget({
+      itemType: "PROMPT",
+      itemId: prompt.id,
+      title: prompt.title,
+      prereqLabel: prompt.prereq === "—" ? undefined : prompt.prereq,
+    });
+    setReaderOpen(true);
+  }
 
   function handleChange(newStatus: ProgressStatus) {
     setStatus.mutate(
@@ -90,8 +106,26 @@ export function PromptCard({ prompt, status, statusLoading }: PromptCardProps) {
           disabled={statusLoading}
           itemLabel={itemLabel}
         />
-        <NotesDialog itemType="PROMPT" itemId={prompt.id} itemTitle={itemLabel} />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground hover:text-foreground"
+            aria-label={`Ler o estudo completo: ${itemLabel}`}
+            onClick={openReader}
+          >
+            <BookOpen className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Ler o estudo</span>
+          </Button>
+          <NotesDialog itemType="PROMPT" itemId={prompt.id} itemTitle={itemLabel} />
+        </div>
       </CardFooter>
+
+      <ReaderDialog
+        target={readerTarget}
+        open={readerOpen}
+        onOpenChange={setReaderOpen}
+      />
     </Card>
   );
 }

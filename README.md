@@ -17,8 +17,12 @@ Acompanhe seu progresso, anote insights e navegue pelo arquivo completo em um s�
 - **Rotas de Leitura** — A ordem numérica (genealogia histórica) e as 4 rotas temáticas
   (Problema do Mal, Feminino Sagrado, Conhecimento Proibido, Correspondências), com os
   passos coloridos conforme o status de cada prompt.
-- **Expansão 5.x** — Os 11 próximos prompts (5.1–5.11) com frentes F1–F5, agrupados em
+- **Expansão 5.x** — Os 11 prompts de expansão (5.1–5.11) com frentes F1–F5, agrupados em
   Textos/Fontes, Sistemas Específicos e Legados Contemporâneos.
+- **Leitor de estudos completo** — O texto integral de cada estudo (Prompts 1–10 e
+  5.1–5.10) renderizado em Markdown com tabelas, citações e tipografia de leitura;
+  navegação Anterior/Próximo dentro da coleção e status editável no próprio leitor.
+  O 5.11 (Harold Bloom) aparece como *Conteúdo pendente* até ser adicionado.
 - **Progresso e notas** — Status por item (Não iniciado / Em progresso / Concluído) e
   notas de estudo, persistidos em banco SQLite via API (atualização otimista na UI).
 
@@ -83,21 +87,29 @@ git add . && git commit -m "feat: <o que mudou>" && git push
 
 ```
 gnose-dashboard/
-├── content/                  # os 11 documentos .docx originais da série (fonte)
+├── content/                  # os 21 documentos .docx originais da série (fonte)
 │   ├── gnosticismo_MESTRE_indice_glossario_proximos_prompts.docx
-│   └── gnosticismo_prompt1..10_*.docx
+│   ├── gnosticismo_prompt1..10_*.docx      # série principal
+│   └── gnosticismo_prompt51..510_*.docx    # expansão 5.1–5.10
 ├── prisma/schema.prisma      # StudyProgress + Note
-├── public/                   # logo, hero e robots
+├── public/
+│   ├── conteudo/             # ★ estudos completos em Markdown (lidos pelo leitor)
+│   │   ├── prompts/          # prompt-01 … prompt-10 (.md)
+│   │   └── serie-5/          # prompt-5.1 … prompt-5.10 (.md)
+│   └── images/               # logo, hero e robots
 ├── src/
 │   ├── app/                  # layout, providers, API routes (progresso/notas)
-│   ├── components/study/     # componentes do dashboard (abas, cards, dialogs)
+│   ├── components/study/     # componentes do dashboard (abas, cards, leitor)
 │   ├── components/ui/        # shadcn/ui
-│   ├── data/                 # ★ TODO O CONTEÚDO ACADÊMICO VIVE AQUI
+│   ├── data/                 # ★ conteúdo estruturado (índices, glossário, rotas)
 │   ├── hooks/                # use-progress, use-notes
 │   └── lib/                  # cliente Prisma, utils
 ├── .env.example              # modelo de variáveis de ambiente
 └── README.md
 ```
+
+> **Nota:** `public/gnose-dashboard.zip` é a cópia de distribuição do próprio pacote
+> (usada pelo link “Baixar pacote” do rodapé). Pode removê-la do repositório se preferir.
 
 ## Onde está o conteúdo (e como editar)
 
@@ -111,24 +123,30 @@ vai incorporar novos estudos:
 | `src/data/glossary.ts` | Glossário técnico unificado | Parte III |
 | `src/data/routes.ts` | Rotas de leitura temáticas | Parte IV |
 | `src/data/nextPrompts.ts` | Expansão 5.1–5.11 | Parte V |
+| `src/data/content-index.ts` | Mapa id → arquivo Markdown do leitor | — |
 | `src/data/types.ts` | Tipos compartilhados | — |
 
 Basta editar os arrays e commitar — a UI se adapta sozinha (contadores, filtros e rotas
 derivam dos dados).
 
-### Adicionando os 11 documentos da Seção 5 (Prompts 5.1–5.11)
+### Série 5 (expansão do Gnosticismo) — situação atual
 
-O índice do documento-mestre já registra os 11 prompts de expansão (5.1–5.11), com
-pré-requisitos, metas e frentes de pesquisa — eles aparecem na aba **Expansão 5.x**.
-Quando os documentos completos chegarem, o fluxo recomendado é:
+Os 20 estudos disponíveis já estão integrados com o **texto completo**: a série principal
+(Prompts 1–10) em `public/conteudo/prompts/` e a expansão (5.1–5.10) em
+`public/conteudo/serie-5/`, ambos em Markdown (convertidos dos `.docx` de `content/`).
+Só o **Prompt 5.11** (Harold Bloom e a Gnose Americana) permanece pendente.
 
-1. Guarde o `.docx` em `content/` (ex.: `gnostismo_prompt5.1_*.docx`).
-2. Transcreva o conteúdo estruturado para `src/data/nextPrompts.ts` (os campos `fronts`,
-   `meta` e `intro` de cada item já existem — é só preencher/ampliar).
-3. Se um novo tipo de dado for necessário (ex.: transcrições completas, cronologias),
-   crie `src/data/<tema>.ts` + um tipo em `src/data/types.ts` e uma nova aba em
-   `src/components/study/` — o padrão das abas existentes serve de guia.
-4. Commit + push. Nada de banco é necessário para conteúdo: só para progresso/notas.
+### Adicionando o Prompt 5.11 (ou qualquer estudo novo)
+
+1. Guarde o `.docx` original em `content/`.
+2. Salve a versão Markdown em `public/conteudo/serie-5/prompt-5.11-harold-bloom-e-a-gnose-americana.md`
+   (a conversão foi feita com `pandoc -f docx -t gfm` + ajustes de título — o formato
+   esperado é: `# TÍTULO`, subtítulo em blockquote, linha `**PROMPT … | PRE-REQ …**`,
+   seções `## FRENTE …` / `### …`, tabelas GFM e citações em blockquote).
+3. Registre o caminho no mapa `contentFiles` de `src/data/content-index.ts`
+   (a linha comentada `"5.11": …` já existe como modelo).
+4. Commit + push — o leitor passa a exibir o estudo automaticamente (a navegação
+   Anterior/Próximo e o estado “pendente” são derivados do mapa).
 
 ## API
 

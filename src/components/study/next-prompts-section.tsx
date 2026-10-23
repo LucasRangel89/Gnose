@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { BookOpen, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SectionHeading } from "./section-heading";
 import { NotesDialog } from "./notes-dialog";
+import { ReaderDialog, type ReaderTarget } from "./reader-dialog";
 import { StatusControl } from "./status-control";
 import { nextPromptGroups, nextPrompts } from "@/data/nextPrompts";
 import type { ProgressStatus } from "@/data/types";
@@ -20,6 +22,19 @@ export function NextPromptsSection() {
   const { map, isLoading } = useProgressMap();
   const setStatus = useSetProgress();
   const { toast } = useToast();
+  const [readerOpen, setReaderOpen] = useState(false);
+  const [readerTarget, setReaderTarget] = useState<ReaderTarget | null>(null);
+
+  function openReader(id: string, title: string, prereq: string, groupTitle?: string) {
+    setReaderTarget({
+      itemType: "NEXT_PROMPT",
+      itemId: id,
+      title,
+      subtitle: groupTitle,
+      prereqLabel: prereq || undefined,
+    });
+    setReaderOpen(true);
+  }
 
   function toggleOpen(id: string) {
     setOpenItems((prev) => {
@@ -109,7 +124,18 @@ export function NextPromptsSection() {
                           aria-hidden
                         />
                       </button>
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          aria-label={`Ler o estudo completo: ${itemLabel}`}
+                          onClick={() =>
+                            openReader(prompt.id, prompt.title, prompt.prereq)
+                          }
+                        >
+                          <BookOpen className="h-4 w-4" aria-hidden />
+                        </Button>
                         <StatusControl
                           compact
                           value={status}
@@ -135,6 +161,18 @@ export function NextPromptsSection() {
                           </p>
                         ) : null}
 
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() =>
+                            openReader(prompt.id, prompt.title, prompt.prereq)
+                          }
+                        >
+                          <BookOpen className="h-4 w-4" aria-hidden />
+                          Abrir o estudo completo
+                        </Button>
+
                         <ul className="space-y-4">
                           {prompt.fronts.map((front) => (
                             <li key={front.label} className="space-y-1">
@@ -156,6 +194,12 @@ export function NextPromptsSection() {
           </section>
         );
       })}
+
+      <ReaderDialog
+        target={readerTarget}
+        open={readerOpen}
+        onOpenChange={setReaderOpen}
+      />
     </div>
   );
 }
