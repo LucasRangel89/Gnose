@@ -28,7 +28,7 @@ export function useProgressRows() {
   const { status } = useSession();
   return useQuery<ProgressRow[]>({
     queryKey: ["progress", owner],
-    enabled: status !== "loading",
+    enabled: process.env.NEXT_PUBLIC_GITHUB_PAGES !== "true" && status !== "loading",
     queryFn: async () => {
       const res = await fetch("/api/progress");
       if (!res.ok) throw new Error("Falha ao carregar o progresso.");

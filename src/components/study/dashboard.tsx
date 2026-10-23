@@ -75,6 +75,8 @@ interface NavigationItem {
   icon: LucideIcon;
 }
 
+const staticReadOnly = process.env.NEXT_PUBLIC_GITHUB_PAGES === "true";
+
 const NAV_GROUPS: { label: string; items: NavigationItem[] }[] = [
   {
     label: "Navegação",
@@ -92,13 +94,13 @@ const NAV_GROUPS: { label: string; items: NavigationItem[] }[] = [
       { id: "expansion", label: "Expansão 5.x", helper: "Aprofundamentos", icon: Sparkles },
     ],
   },
-  {
+  ...(!staticReadOnly ? [{
     label: "Meu estudo",
     items: [
-      { id: "library", label: "Minha biblioteca", helper: "Notas, favoritos e histórico", icon: Bookmark },
-      { id: "flashcards", label: "Revisão espaçada", helper: "Flashcards do glossário", icon: BrainCircuit },
+      { id: "library" as const, label: "Minha biblioteca", helper: "Notas, favoritos e histórico", icon: Bookmark },
+      { id: "flashcards" as const, label: "Revisão espaçada", helper: "Flashcards do glossário", icon: BrainCircuit },
     ],
-  },
+  }] : []),
 ];
 
 const SECTION_TITLES: Record<DashboardSection, string> = {
@@ -314,15 +316,21 @@ function SidebarNavigation({
               <BookOpenCheck className="size-4 text-primary" aria-hidden />
               Seu percurso
             </div>
-            <span className="font-mono text-[11px] text-muted-foreground">
-              {isLoading ? "…" : `${done}/${total}`}
-            </span>
-          </div>
-          <Progress value={percent} aria-label={`${percent}% do acervo concluído`} className="h-1.5" />
-          <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>{isError ? "Sincronização indisponível" : `${percent}% concluído`}</span>
-            <span>21 estudos</span>
-          </div>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {staticReadOnly ? "Acesso público" : isLoading ? "…" : `${done}/${total}`}
+              </span>
+            </div>
+            {staticReadOnly ? (
+              <p className="text-[10px] text-muted-foreground">Acervo disponível para leitura.</p>
+            ) : (
+              <>
+                <Progress value={percent} aria-label={`${percent}% do acervo concluído`} className="h-1.5" />
+                <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>{isError ? "Sincronização indisponível" : `${percent}% concluído`}</span>
+                  <span>21 estudos</span>
+                </div>
+              </>
+            )}
         </div>
         <p className="mt-3 px-1 text-[10px] leading-relaxed text-muted-foreground/70">
           Um mapa para explorar ideias, tradições e conexões.
@@ -372,6 +380,7 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
+    if (staticReadOnly) return;
     const query = searchQuery.trim();
     if (query.length < 2) return;
     const controller = new AbortController();
@@ -522,7 +531,7 @@ export function Dashboard() {
                     <span className="min-w-0 flex-1 truncate text-left text-xs sm:text-sm">Buscar estudos e conceitos…</span>
                     <kbd className="hidden rounded border bg-background/70 px-1.5 py-0.5 font-mono text-[9px] lg:inline-flex">Ctrl/⌘K</kbd>
                   </Button>
-                  <AuthControl />
+                  {!staticReadOnly ? <AuthControl /> : null}
                   <ThemeToggle />
                 </div>
               </div>
@@ -568,7 +577,7 @@ export function Dashboard() {
         open={searchOpen}
         onOpenChange={setSearchOpen}
         title="Buscar no acervo"
-        description="Busque títulos, conceitos e termos relacionados; a busca aprofundada localiza trechos nos textos integrais e abre a seção correspondente."
+        description={staticReadOnly ? "Busque títulos, conceitos e termos do acervo publicado." : "Busque títulos, conceitos e termos relacionados; a busca aprofundada localiza trechos nos textos integrais e abre a seção correspondente."}
         showCloseButton={false}
         className="top-[15%] translate-y-0 sm:max-w-2xl"
       >
@@ -638,7 +647,7 @@ export function Dashboard() {
             )}
           </CommandList>
           <div className="flex items-center justify-between border-t px-4 py-2.5 text-[10px] text-muted-foreground">
-            <span>Busca ampliada por conceitos, termos relacionados e trechos</span>
+            <span>{staticReadOnly ? "Busca por títulos, conceitos e termos" : "Busca ampliada por conceitos, termos relacionados e trechos"}</span>
             <span className="font-mono">{prompts.length + nextPrompts.length} estudos · {concepts.length} conceitos · {glossary.length} termos</span>
           </div>
         </Command>

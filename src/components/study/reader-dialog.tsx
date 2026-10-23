@@ -24,6 +24,8 @@ import { useRecordReading } from "@/hooks/use-personal-data";
 import { studySourceFor } from "@/data/study-sources";
 import { FavoriteToggle, HighlightSelectionDialog } from "./study-actions";
 
+const staticReadOnly = process.env.NEXT_PUBLIC_GITHUB_PAGES === "true";
+
 /**
  * ReaderDialog — leitor de estudos em tela grande.
  *
@@ -352,6 +354,7 @@ export function ReaderDialog({ target, open, onOpenChange }: ReaderDialogProps) 
                   ) : null}
                 </div>
                 <div className="flex items-center gap-1.5">
+                  {!staticReadOnly ? <>
                   <FavoriteToggle
                     itemType={current.itemType}
                     itemId={current.itemId}
@@ -379,6 +382,7 @@ export function ReaderDialog({ target, open, onOpenChange }: ReaderDialogProps) 
                     itemId={current.itemId}
                     itemTitle={itemLabel}
                   />
+                  </> : null}
                   <Button
                     variant="ghost"
                     size="icon"

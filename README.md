@@ -59,6 +59,17 @@ A autenticação é opcional em desenvolvimento. Para habilitar login GitHub:
 
 Em desenvolvimento, o fallback local documentado permanece disponível. Com autenticação, o identificador vem da sessão OAuth — o cliente não pode escolher o `userId`. Consultas e alterações pessoais são sempre filtradas por esse identificador; o cache cliente é limpo quando a conta muda. O perfil armazena apenas os dados básicos devolvidos pelo GitHub. Conteúdo público e busca do acervo não exigem login.
 
+## Publicar uma versão pública somente para leitura (GitHub Pages)
+
+O projeto inclui uma versão estática do acervo para acesso público. Ela não oferece login, dados pessoais salvos, histórico, progresso sincronizado, flashcards nem busca em trechos do texto integral; não precisa de banco ou segredos.
+
+1. Mescle a configuração de publicação na branch `main`.
+2. No repositório do GitHub, abra **Settings → Pages** e escolha **GitHub Actions** em **Build and deployment → Source**. Isso precisa ser feito uma vez por alguém com permissão de administrador.
+3. Abra a aba **Actions** e aguarde o workflow **Publish read-only site to GitHub Pages** terminar com sucesso.
+4. O endereço esperado para este repositório é <https://lucasrangel89.github.io/Gnose/>. A primeira ativação pode levar alguns minutos.
+
+Depois disso, cada atualização da branch `main` publica automaticamente uma nova versão. Para testar a geração no computador, rode `npm run build:pages`; o resultado fica na pasta `out/`. A compilação desativa temporariamente as rotas de API e as restaura ao terminar.
+
 ## Banco e implantação
 
 O schema padrão `prisma/schema.prisma` usa SQLite para desenvolvimento local. `prisma/schema.postgres.prisma` é destinado à produção. Não use SQLite como banco compartilhado em uma implantação multiusuário.
