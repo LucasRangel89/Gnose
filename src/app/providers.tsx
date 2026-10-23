@@ -35,19 +35,27 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }),
   );
 
+  const staticReadOnly = process.env.NEXT_PUBLIC_GITHUB_PAGES === "true";
+
   return (
-    <SessionProvider>
+    <SessionProvider session={staticReadOnly ? null : undefined} refetchInterval={0}>
       <QueryClientProvider client={queryClient}>
-        <UserCacheBoundary>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
+        {staticReadOnly ? (
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             {children}
           </ThemeProvider>
-        </UserCacheBoundary>
+        ) : (
+          <UserCacheBoundary>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
+          </UserCacheBoundary>
+        )}
       </QueryClientProvider>
     </SessionProvider>
   );

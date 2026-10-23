@@ -34,7 +34,10 @@ export function contentFileFor(
   itemType: ItemType,
   itemId: string,
 ): string | undefined {
-  return contentFiles[itemType]?.[itemId];
+  const path = contentFiles[itemType]?.[itemId];
+  if (!path) return undefined;
+  const basePath = process.env.NEXT_PUBLIC_GITHUB_PAGES === "true" ? "/Gnose" : "";
+  return `${basePath}${path}`;
 }
 
 export const publishedStudyCount = Object.values(contentFiles).reduce(

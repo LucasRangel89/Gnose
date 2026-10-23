@@ -30,6 +30,8 @@ import { countStatuses, getStatus, useProgressMap } from "@/hooks/use-progress";
 import type { DashboardSection } from "./dashboard";
 import { cn } from "@/lib/utils";
 
+const staticReadOnly = process.env.NEXT_PUBLIC_GITHUB_PAGES === "true";
+
 const QUICK_LINKS: {
   section: DashboardSection;
   icon: typeof Compass;
@@ -151,7 +153,7 @@ export function OverviewTab({
     <div className="space-y-10">
       <section className="relative isolate overflow-hidden rounded-[28px] border border-primary/25 bg-[#151923] shadow-[0_20px_70px_-32px_rgba(0,0,0,0.7)]">
         <Image
-          src="/images/hero-gnose.png"
+          src={staticReadOnly ? "/Gnose/images/hero-gnose.png" : "/images/hero-gnose.png"}
           alt=""
           fill
           priority
@@ -190,23 +192,25 @@ export function OverviewTab({
           <div className="rounded-2xl border border-white/12 bg-black/25 p-5 shadow-xl backdrop-blur-md sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Seu percurso</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">{staticReadOnly ? "Acervo público" : "Seu percurso"}</p>
                 <p className="mt-2 font-serif text-4xl font-semibold leading-none text-stone-50">
-                  {isLoading ? "—" : `${percent}%`}
+                  {staticReadOnly ? `${publishedStudyCount} textos` : isLoading ? "—" : `${percent}%`}
                 </p>
               </div>
               <span className="flex size-10 items-center justify-center rounded-xl border border-amber-200/20 bg-amber-100/10 text-amber-200">
                 <Sparkles className="size-5" aria-hidden />
               </span>
             </div>
-            <Progress value={percent} aria-label="Progresso geral dos estudos" className="mt-5 h-1.5 bg-white/10 [&>div]:bg-amber-300" />
-            <div className="mt-3 flex items-center justify-between gap-2 text-xs text-stone-300/75">
-              <span>{totalDone} de {totalItems} estudos concluídos</span>
-              <span>{totalInProgress} em andamento</span>
-            </div>
+            {!staticReadOnly ? <>
+              <Progress value={percent} aria-label="Progresso geral dos estudos" className="mt-5 h-1.5 bg-white/10 [&>div]:bg-amber-300" />
+              <div className="mt-3 flex items-center justify-between gap-2 text-xs text-stone-300/75">
+                <span>{totalDone} de {totalItems} estudos concluídos</span>
+                <span>{totalInProgress} em andamento</span>
+              </div>
+            </> : <p className="mt-5 text-xs text-stone-300/75">Explore os textos, conceitos, glossário e rotas de leitura.</p>}
             <Button variant="ghost" onClick={openContinue} className="mt-5 h-auto w-full justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-left text-stone-100 hover:bg-white/10 hover:text-white">
               <span className="min-w-0">
-                <span className="block text-[10px] uppercase tracking-[0.14em] text-stone-400">{allDone ? "Revisar o percurso" : "Próximo passo"}</span>
+                <span className="block text-[10px] uppercase tracking-[0.14em] text-stone-400">{staticReadOnly ? "Comece por aqui" : allDone ? "Revisar o percurso" : "Próximo passo"}</span>
                 <span className="mt-1 block truncate text-sm font-medium">{continueTarget.itemId} · {continueTarget.title}</span>
               </span>
               <ArrowRight className="ml-3 size-4 shrink-0 text-amber-200" aria-hidden />
@@ -301,9 +305,9 @@ export function OverviewTab({
               A ordem dos cadernos acompanha uma genealogia histórica; as rotas e o mapa cruzado revelam aproximações temáticas. Não há uma única porta de entrada.
             </p>
             <div className="mt-5 space-y-2">
-              <GuideRow number="01" title="Leia" description="Abra um caderno e marque seu progresso." />
+              <GuideRow number="01" title="Leia" description={staticReadOnly ? "Abra um caderno para ler o texto completo." : "Abra um caderno e marque seu progresso."} />
               <GuideRow number="02" title="Conecte" description="Cruze conceitos e tradições no índice." />
-              <GuideRow number="03" title="Registre" description="Guarde dúvidas e insights nas notas." />
+              {!staticReadOnly ? <GuideRow number="03" title="Registre" description="Guarde dúvidas e insights nas notas." /> : null}
             </div>
           </CardContent>
         </Card>
