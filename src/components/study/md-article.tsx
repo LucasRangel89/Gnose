@@ -8,12 +8,15 @@ import {
   type ReactNode,
 } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import { slugifyHeading } from "@/lib/content-search";
 import { cn } from "@/lib/utils";
 
 /**
  * MdArticle — renderização tipográfica do conteúdo completo dos estudos
- * (Markdown estático e confiável de public/conteudo/, sem HTML cru).
+ * (Markdown de public/conteudo/; HTML de tabelas é analisado e sanitizado).
  *
  * Todo o estilo é aplicado via a prop `components` do react-markdown com
  * classes utilitárias Tailwind — nenhum CSS global é adicionado. Os tokens
@@ -43,9 +46,17 @@ interface MdOrderedListProps extends MdElementProps {
   start?: number;
 }
 
+function markdownNodeText(children: ReactNode): string {
+  if (typeof children === "string" || typeof children === "number") return String(children);
+  if (Array.isArray(children)) return children.map(markdownNodeText).join(" ");
+  if (isValidElement<{ children?: ReactNode }>(children)) return markdownNodeText(children.props.children);
+  return "";
+}
+
 const components: Components = {
   h1: ({ className, children }: MdElementProps) => (
     <h1
+      id={slugifyHeading(markdownNodeText(children))}
       className={cn(
         "mt-2 mb-4 font-serif text-3xl font-semibold leading-tight text-foreground",
         className,
@@ -76,6 +87,7 @@ const components: Components = {
   ),
   h4: ({ className, children }: MdElementProps) => (
     <h4
+      id={slugifyHeading(markdownNodeText(children))}
       className={cn(
         "mt-6 mb-2 font-serif text-lg font-semibold text-foreground/90",
         className,
@@ -188,8 +200,8 @@ const components: Components = {
   a: ({ className, children, href }: MdLinkProps) => (
     <a
       href={href}
-      target="_blank"
-      rel="noreferrer"
+      target={href?.startsWith("#") ? undefined : "_blank"}
+      rel={href?.startsWith("#") ? undefined : "noreferrer"}
       className={cn("text-primary underline underline-offset-4", className)}
     >
       {children}
@@ -231,7 +243,11 @@ export function MdArticle({
 }) {
   return (
     <div className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw, rehypeSanitize]}
+        components={components}
+      >
         {content}
       </ReactMarkdown>
     </div>

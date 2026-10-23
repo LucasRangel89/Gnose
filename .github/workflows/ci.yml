@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./ci.db
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-only-placeholder-secret
+      AUTH_REQUIRED: "false"
+      NEXT_PUBLIC_AUTH_ENABLED: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies and generate SQLite client
+        run: bun install --frozen-lockfile
+      - name: Push SQLite test schema
+        run: bun run db:push
+      - name: Validate PostgreSQL schema
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/gnose?schema=public
+        run: bun run db:validate:postgres
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Tests
+        run: bun run test
+      - name: Build
+        run: bun run build

@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import type { ItemType, ProgressStatus } from "@/data/types";
 
 export interface ProgressRow {
@@ -17,14 +14,21 @@ export interface ProgressRow {
 
 export type ProgressMap = Map<string, ProgressStatus>;
 
-/** Chave do mapa de progresso: `${itemType}:${itemId}`. */
 export function progressKey(itemType: ItemType, itemId: string): string {
   return `${itemType}:${itemId}`;
 }
 
+function useOwner() {
+  const { data } = useSession();
+  return data?.user?.id ?? "local";
+}
+
 export function useProgressRows() {
+  const owner = useOwner();
+  const { status } = useSession();
   return useQuery<ProgressRow[]>({
-    queryKey: ["progress"],
+    queryKey: ["progress", owner],
+    enabled: status !== "loading",
     queryFn: async () => {
       const res = await fetch("/api/progress");
       if (!res.ok) throw new Error("Falha ao carregar o progresso.");
@@ -36,32 +40,21 @@ export function useProgressRows() {
 export function useProgressMap() {
   const query = useProgressRows();
   const map: ProgressMap = new Map();
-  for (const row of query.data ?? []) {
-    map.set(progressKey(row.itemType as ItemType, row.itemId), row.status);
-  }
+  for (const row of query.data ?? []) map.set(progressKey(row.itemType as ItemType, row.itemId), row.status);
   return { map, isLoading: query.isLoading, isError: query.isError };
 }
 
-export function getStatus(
-  map: ProgressMap,
-  itemType: ItemType,
-  itemId: string,
-): ProgressStatus {
+export function getStatus(map: ProgressMap, itemType: ItemType, itemId: string): ProgressStatus {
   return map.get(progressKey(itemType, itemId)) ?? "NOT_STARTED";
 }
 
-/** Contagem de itens concluídos / em progresso dentro de um conjunto de ids. */
-export function countStatuses(
-  map: ProgressMap,
-  itemType: ItemType,
-  ids: string[],
-) {
+export function countStatuses(map: ProgressMap, itemType: ItemType, ids: string[]) {
   let done = 0;
   let inProgress = 0;
   for (const id of ids) {
-    const s = getStatus(map, itemType, id);
-    if (s === "DONE") done += 1;
-    else if (s === "IN_PROGRESS") inProgress += 1;
+    const status = getStatus(map, itemType, id);
+    if (status === "DONE") done += 1;
+    else if (status === "IN_PROGRESS") inProgress += 1;
   }
   return { done, inProgress, total: ids.length };
 }
@@ -72,9 +65,10 @@ export interface SetProgressVars {
   status: ProgressStatus;
 }
 
-/** Mutation com atualização otimista + rollback em caso de erro. */
 export function useSetProgress() {
+  const owner = useOwner();
   const queryClient = useQueryClient();
+  const key = ["progress", owner] as const;
   return useMutation({
     mutationFn: async (vars: SetProgressVars) => {
       const res = await fetch("/api/progress", {
@@ -86,13 +80,10 @@ export function useSetProgress() {
       return (await res.json()) as ProgressRow;
     },
     onMutate: async (vars) => {
-      await queryClient.cancelQueries({ queryKey: ["progress"] });
-      const previous =
-        queryClient.getQueryData<ProgressRow[]>(["progress"]) ?? [];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<ProgressRow[]>(key) ?? [];
       const next = [
-        ...previous.filter(
-          (r) => !(r.itemType === vars.itemType && r.itemId === vars.itemId),
-        ),
+        ...previous.filter((row) => !(row.itemType === vars.itemType && row.itemId === vars.itemId)),
         {
           id: `optimistic-${vars.itemType}-${vars.itemId}`,
           itemType: vars.itemType,
@@ -101,16 +92,12 @@ export function useSetProgress() {
           updatedAt: new Date().toISOString(),
         },
       ];
-      queryClient.setQueryData<ProgressRow[]>(["progress"], next);
+      queryClient.setQueryData<ProgressRow[]>(key, next);
       return { previous };
     },
     onError: (_error, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(["progress"], context.previous);
-      }
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
     },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["progress"] });
-    },
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: key }),
   });
 }

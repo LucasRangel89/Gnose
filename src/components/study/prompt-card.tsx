@@ -52,6 +52,13 @@ export function PromptCard({ prompt, status, statusLoading }: PromptCardProps) {
             description: `P${prompt.number} marcado como ${label}.`,
           });
         },
+        onError: () => {
+          toast({
+            title: "Não foi possível salvar o progresso",
+            description: "Verifique a configuração do banco e tente novamente.",
+            variant: "destructive",
+          });
+        },
       },
     );
   }

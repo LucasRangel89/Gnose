@@ -20,6 +20,9 @@ import { prompts } from "@/data/prompts";
 import type { ItemType, ProgressStatus } from "@/data/types";
 import { getStatus, useProgressMap, useSetProgress } from "@/hooks/use-progress";
 import { useToast } from "@/hooks/use-toast";
+import { useRecordReading } from "@/hooks/use-personal-data";
+import { studySourceFor } from "@/data/study-sources";
+import { FavoriteToggle, HighlightSelectionDialog } from "./study-actions";
 
 /**
  * ReaderDialog — leitor de estudos em tela grande.
@@ -40,6 +43,8 @@ export interface ReaderTarget {
   subtitle?: string;
   /** Rótulo do pré-requisito, quando existir. */
   prereqLabel?: string;
+  /** Âncora de seção para abrir um resultado da busca no trecho exato. */
+  anchor?: string;
 }
 
 interface ReaderDialogProps {
@@ -162,17 +167,22 @@ export function ReaderDialog({ target, open, onOpenChange }: ReaderDialogProps) 
   const { toast } = useToast();
   const { map, isLoading: progressLoading } = useProgressMap();
   const setProgress = useSetProgress();
+  const { mutate: recordReading } = useRecordReading();
+  const [selectedText, setSelectedText] = useState("");
+  const [selectedAnchor, setSelectedAnchor] = useState<string | undefined>();
 
   // `current` segue `target`: o pai só abre o diálogo; a navegação
   // Anterior/Próxima atualiza o estado interno. A sincronização é feita
   // ajustando o estado durante o render (padrão recomendado pelo React),
   // pois o eslint-plugin-react-hooks v7 proíbe setState síncrono em effects.
   const [current, setCurrent] = useState<ReaderTarget | null>(target);
-  const targetKey = target ? `${target.itemType}:${target.itemId}` : null;
+  const targetKey = target ? `${target.itemType}:${target.itemId}:${target.anchor ?? ""}` : null;
   const [lastTargetKey, setLastTargetKey] = useState<string | null>(targetKey);
   if (targetKey !== lastTargetKey) {
     setLastTargetKey(targetKey);
     setCurrent(target);
+    setSelectedText("");
+    setSelectedAnchor(undefined);
   }
 
   // Cache arquivo -> conteúdo (em estado, não em ref, para poder derivar a
@@ -214,11 +224,29 @@ export function ReaderDialog({ target, open, onOpenChange }: ReaderDialogProps) 
     })();
   }, [open, file, cache, failed]);
 
-  // Volta ao topo ao abrir ou trocar de item.
+  // Cada abertura atualiza o histórico pessoal do usuário atual.
+  useEffect(() => {
+    if (!open || !current) return;
+    recordReading({ itemType: current.itemType, itemId: current.itemId });
+  }, [open, current?.itemType, current?.itemId, recordReading]);
+
+  // Volta ao topo ao abrir/trocar de item; um resultado de busca pode reposicionar
+  // o leitor no título da seção correspondente assim que o Markdown estiver pronto.
   useEffect(() => {
     if (!open) return;
     bodyRef.current?.scrollTo({ top: 0 });
   }, [open, current?.itemId]);
+
+  useEffect(() => {
+    if (!open || phase !== "ready" || !current?.anchor) return;
+    const frame = window.requestAnimationFrame(() => {
+      bodyRef.current?.querySelector<HTMLElement>(`#${current.anchor}`)?.scrollIntoView({
+        block: "start",
+        behavior: "smooth",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, phase, current?.itemId, current?.anchor]);
 
   const collection =
     current?.itemType === "NEXT_PROMPT" ? ORDERED_NEXT_PROMPTS : prompts;
@@ -234,8 +262,24 @@ export function ReaderDialog({ target, open, onOpenChange }: ReaderDialogProps) 
     if (!neighbor) return;
     const nextTarget = toReaderTarget(current.itemType, neighbor.id);
     if (!nextTarget) return;
+    setSelectedText("");
+    setSelectedAnchor(undefined);
     setCurrent(nextTarget);
     bodyRef.current?.scrollTo({ top: 0 });
+  }
+
+  function updateSelectedText() {
+    const selection = window.getSelection();
+    const body = bodyRef.current;
+    const quote = selection?.toString().trim() ?? "";
+    if (!quote || !selection?.anchorNode || !body?.contains(selection.anchorNode)) return;
+    setSelectedText(quote.slice(0, 3000));
+    const selectedTop = selection.anchorNode.parentElement?.getBoundingClientRect().top;
+    const headings = Array.from(body.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"));
+    const nearestHeading = headings
+      .filter((heading) => selectedTop !== undefined && heading.getBoundingClientRect().top <= selectedTop)
+      .at(-1);
+    setSelectedAnchor(nearestHeading?.id);
   }
 
   function handleRetry() {
@@ -258,6 +302,13 @@ export function ReaderDialog({ target, open, onOpenChange }: ReaderDialogProps) 
             description: `Prompt ${current.itemId} marcado como ${STATUS_LABELS[status]}.`,
           });
         },
+        onError: () => {
+          toast({
+            title: "Não foi possível salvar o progresso",
+            description: "Verifique a configuração do banco e tente novamente.",
+            variant: "destructive",
+          });
+        },
       },
     );
   }
@@ -265,6 +316,9 @@ export function ReaderDialog({ target, open, onOpenChange }: ReaderDialogProps) 
   const itemLabel = current
     ? `Prompt ${current.itemId} — ${current.title}`
     : "";
+  const sourceInfo = current
+    ? studySourceFor(current.itemType, current.itemId)
+    : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -298,6 +352,22 @@ export function ReaderDialog({ target, open, onOpenChange }: ReaderDialogProps) 
                   ) : null}
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <FavoriteToggle
+                    itemType={current.itemType}
+                    itemId={current.itemId}
+                    itemTitle={itemLabel}
+                  />
+                  <HighlightSelectionDialog
+                    itemType={current.itemType}
+                    itemId={current.itemId}
+                    itemTitle={itemLabel}
+                    quote={selectedText}
+                    anchor={selectedAnchor}
+                    onSaved={() => {
+                      setSelectedText("");
+                      setSelectedAnchor(undefined);
+                    }}
+                  />
                   <StatusControl
                     value={getStatus(map, current.itemType, current.itemId)}
                     onChange={handleStatusChange}
@@ -328,8 +398,19 @@ export function ReaderDialog({ target, open, onOpenChange }: ReaderDialogProps) 
 
             <div
               ref={bodyRef}
+              onMouseUp={updateSelectedText}
+              onKeyUp={updateSelectedText}
               className="study-scroll min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8"
             >
+              {sourceInfo ? (
+                <aside className="mx-auto mb-6 max-w-3xl rounded-lg border bg-muted/25 p-4 text-xs leading-relaxed text-muted-foreground" aria-label="Proveniência e revisão editorial">
+                  <p className="font-semibold text-foreground">Origem e estado das referências</p>
+                  <p className="mt-1">Documento-fonte: <code className="rounded bg-background px-1 py-0.5">{sourceInfo.sourceFile}</code></p>
+                  <p className="mt-1">{sourceInfo.transcribedAt ? `Transcrição: ${sourceInfo.transcribedAt}.` : "Data de transcrição/revisão: ainda não registrada."}</p>
+                  <p className="mt-1">{sourceInfo.editorialNote}</p>
+                  <p className="mt-1">Citações e referências permanecem no corpo do texto conforme a fonte; nenhuma bibliografia externa foi acrescentada nesta conversão.</p>
+                </aside>
+              ) : null}
               {phase === "ready" && cached !== undefined ? (
                 <MdArticle content={cached} className="mx-auto max-w-3xl" />
               ) : phase === "loading" ? (
